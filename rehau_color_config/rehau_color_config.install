@@ -1,0 +1,51 @@
+<?php
+
+/**
+ * Implements hook_schema().
+ *
+ * This defines the database table which will hold the top colors of the winpro
+ *
+ * @ingroup tabledrag_example
+ */
+function rehau_color_config_schema() {
+  $schema['winpro_api_top_colours'] = array(
+    'description' => 'The table that allows colour descriptions.',
+    'fields' => array(
+      'id' => array(
+        'description' => 'The primary identifier for a item.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'uid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => "Creator user's {users}.uid",
+      ),
+      'colour_code' => array(
+        'description' => 'Winpro code of the colour.',
+        'type' => 'varchar',
+        'not null' => TRUE,
+        'length' => 20,
+      ),
+      'colour_text' => array(
+        'description' => 'Human readable text of the colour.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'colour_code_hex' => array(
+        'description' => 'CSS readable colour code.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+    ),
+    'primary key' => array('id'),
+    'indexes' => array(),
+  );
+  return $schema;
+}

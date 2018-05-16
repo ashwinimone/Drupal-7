@@ -1,0 +1,169 @@
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+function rehau_color_config_menu() {
+  $items = array();
+
+  $items['admin/config/system/winpro-top-colour-config'] = array(
+    'title' => 'Winpro Top Colour config',
+    'description' => 'Manage winpro top colour config.',
+    'access arguments' => array('administer winpro top colours'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('rehau_top_color_config_form'),
+    'file' => 'rehau_top_color_config.admin.inc',
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function rehau_color_config_permission() {
+  return array(
+    'administer winpro top colours' => array(
+      'title' => t('Administer Winpro Top Colour'),
+      'description' => t('Choose the top colours from the Active Winpro Colours.'),
+    ),
+  );
+}
+
+/*
+ * Get active colors from the winpro colors API
+ */
+function rehau_admin_get_active_colors($entry = array()) {
+  // Read all fields from the dbtng_example table.
+  $select = db_select('winpro_api_colours', 'c');
+  $select->fields('c');
+  // Filter only colors with active state
+  $select->condition('c.colour_state', '1');
+
+  // Return the result in object format.
+  return $select->execute()->fetchAll();
+}
+
+/*
+ * Get color info from Winpro colours
+ */
+function rehau_admin_get_color_info($colour_code) {
+  $winpro_colour = WinproColor::loadAll();
+
+  // Read all fields from the dbtng_example table.
+  $select = db_select('winpro_api_colours', 'c');
+  $select->fields('c');
+  // Filter only colors with active state
+  $select->condition('c.colour_state', '1');
+  $select->condition('c.colour_code', $colour_code);
+
+  // Return the result in object format.
+  $color = $select->execute()->fetchAssoc();
+
+  $winpro_color_code_hex = $color['colour_code'];
+  $color['colour_code_hex'] = $winpro_colour[$winpro_color_code_hex]->getRGB();
+
+  return $color;
+}
+
+/*
+ * Get top colours for the logged in user/ Get top colours for the logged in user set by admin
+ */
+function rehau_get_top_colours($logged_in_user){
+  // Read all fields from the dbtng_example table.
+
+  $select = db_select('winpro_api_top_colours', 'c');
+  $select->fields('c');
+  // Filter only colors with active state
+  $select->condition('c.uid', $logged_in_user);
+
+  // Return the result in object format.
+  return $select->execute()->fetchAll();
+}
+
+/*
+ * Get the the hex code of the colour from winpro colour
+ */
+function make_colour_code_key($colours, $active){
+  $winpro_colour = WinproColor::loadAll();
+  $active_colours = array();
+  foreach($colours as $color){
+    $color = json_decode(json_encode($color), true);
+    $winpro_color_code = $color['colour_code'];
+    $color['colour_code_hex'] = $winpro_colour[$winpro_color_code]->getRGB();
+    if($active){
+      $color['colour_state'] = 0;
+    }
+    $active_colours[$winpro_color_code] = $color;
+  }
+  return $active_colours;
+}
+
+/*
+ *
+ */
+function get_top_colours_from_active($active_colours, $top_colours){
+
+  foreach($active_colours as $key=>$val) {
+    if (empty($top_colours[$key])) {
+      $active_colours[$key]['colour_state'] = 0;
+    } else {
+      $active_colours[$key]['colour_state'] = 1;
+    }
+  }
+  return $active_colours;
+}
+
+/*
+ * Get active colors from the winpro colors API with the top colours selected
+ */
+function rehau_get_active_colors(){
+  global $user;
+  $logged_in_user = $user->uid;
+
+  $active = TRUE;
+  $active_colors = make_colour_code_key(rehau_admin_get_active_colors(), $active);
+
+  $top_colors = make_colour_code_key(rehau_get_top_colours($logged_in_user), FALSE);
+  if(empty($top_colors)){
+    $top_colors = make_colour_code_key(rehau_get_top_colours(1), FALSE);
+  }
+
+ if (empty($top_colors)) {
+   return $active_colors;
+ }
+ else{
+  $top_colors_winpro = get_top_colours_from_active($active_colors, $top_colors);
+  return $top_colors_winpro;
+ }
+
+}
+
+
+/*
+ * Implements hook_theme() for the Winpro Top Colour config form
+ */
+function rehau_color_config_theme() {
+  return array(
+    // Theme function for the 'sortable' example
+    'rehau_top_color_config_form' => array(
+      'render element' => 'form',
+    ),
+  );
+}
+function theme_rehau_top_color_config_form($variables) {
+  $form = $variables['form'];
+  $rows = array();
+  foreach(element_children($form['colours']) AS $container_id) {
+    $row = array();
+    foreach(element_children($form['colours'][$container_id]) AS $element_id) {
+      $row[] = drupal_render($form['colours'][$container_id][$element_id]);
+    }
+    $rows[] = $row;
+  }
+
+  $output = theme('table', array('header' => array(t('Enabled'),t('Color Code'), t('Title')),'rows' => $rows ));
+  $output .= drupal_render_children($form);
+  return $output;
+
+}

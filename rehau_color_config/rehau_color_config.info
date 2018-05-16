@@ -1,0 +1,4 @@
+name = Rehau Color Config
+description = Color list configuration for rehau
+package = Rehau
+core = 7.x
